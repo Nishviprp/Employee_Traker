@@ -1,4 +1,4 @@
-Name,Email,Status,Today Hours,Total Hours,Total Online Orders,Total In-Store Customers,Last Action
-Jordan Smith,emp1@company.com,Clocked Out,1.99,17.99,106,23,Clocked in at 6:10:51 PM
-Casey Lee,emp2@company.com,Clocked Out,0.00,16.00,17,29,
-Morgan Reyes,emp3@company.com,Clocked Out,0.00,16.00,21,35,
+Name,Email,Status,Today Hours,Total Hours,Total Orders,Total Customers
+Jordan Smith,emp1@company.com,Clocked Out,3.00,19.00,49,23
+Casey Lee,emp2@company.com,Clocked Out,0.00,16.00,17,29
+Morgan Reyes,emp3@company.com,Clocked Out,0.00,16.00,21,35

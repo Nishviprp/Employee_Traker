@@ -1,6 +1,6 @@
 import { generateId, todayStr, nowIso, calculateHours } from './helpers'
 
-export const KEYS = {
+const KEYS = {
   EMPLOYEES: 'employees',
   TIME_LOGS: 'timeLogs',
   METRICS: 'metrics',
@@ -22,7 +22,7 @@ function write(key, value) {
   localStorage.setItem(key, JSON.stringify(value))
 }
 
-// ---------- Seeding ----------
+// ---------- Seed / Reset ----------
 
 export function seedData() {
   if (localStorage.getItem(KEYS.SETTINGS)) return
@@ -40,47 +40,16 @@ export function resetAllData() {
 
 function seedDefaultData() {
   const employees = [
-    {
-      id: 'manager@company.com',
-      email: 'manager@company.com',
-      name: 'Alex Manager',
-      role: 'manager',
-      createdAt: nowIso(),
-      lastAction: null,
-    },
-    {
-      id: 'emp1@company.com',
-      email: 'emp1@company.com',
-      name: 'Jordan Smith',
-      role: 'employee',
-      createdAt: nowIso(),
-      lastAction: null,
-    },
-    {
-      id: 'emp2@company.com',
-      email: 'emp2@company.com',
-      name: 'Casey Lee',
-      role: 'employee',
-      createdAt: nowIso(),
-      lastAction: null,
-    },
-    {
-      id: 'emp3@company.com',
-      email: 'emp3@company.com',
-      name: 'Morgan Reyes',
-      role: 'employee',
-      createdAt: nowIso(),
-      lastAction: null,
-    },
+    { id: 'emp1@company.com', email: 'emp1@company.com', name: 'Jordan Smith', createdAt: nowIso() },
+    { id: 'emp2@company.com', email: 'emp2@company.com', name: 'Casey Lee', createdAt: nowIso() },
+    { id: 'emp3@company.com', email: 'emp3@company.com', name: 'Morgan Reyes', createdAt: nowIso() },
   ]
 
   const timeLogs = []
   const metrics = []
   const reviews = []
 
-  const employeeIds = ['emp1@company.com', 'emp2@company.com', 'emp3@company.com']
-
-  employeeIds.forEach((employeeId, idx) => {
+  employees.forEach((emp, idx) => {
     for (let daysAgo = 2; daysAgo >= 1; daysAgo--) {
       const day = new Date()
       day.setDate(day.getDate() - daysAgo)
@@ -93,7 +62,7 @@ function seedDefaultData() {
 
       timeLogs.push({
         id: generateId(),
-        employeeId,
+        employeeId: emp.id,
         date: dateStr,
         clockIn: clockIn.toISOString(),
         clockOut: clockOut.toISOString(),
@@ -102,16 +71,16 @@ function seedDefaultData() {
 
       metrics.push({
         id: generateId(),
-        employeeId,
+        employeeId: emp.id,
         date: dateStr,
-        onlineOrders: 5 + idx * 2 + daysAgo,
-        inStoreCustomers: 10 + idx * 3 + daysAgo,
+        orders: 5 + idx * 2 + daysAgo,
+        customers: 10 + idx * 3 + daysAgo,
       })
     }
 
     reviews.push({
       id: generateId(),
-      employeeId,
+      employeeId: emp.id,
       reviewerEmail: 'manager@company.com',
       rating: 4,
       comment: 'Solid performance this period. Keep up the good work.',
@@ -123,7 +92,7 @@ function seedDefaultData() {
   write(KEYS.TIME_LOGS, timeLogs)
   write(KEYS.METRICS, metrics)
   write(KEYS.REVIEWS, reviews)
-  write(KEYS.SETTINGS, { version: 1, theme: 'system' })
+  write(KEYS.SETTINGS, { version: 1 })
 }
 
 // ---------- Employees ----------
@@ -140,42 +109,16 @@ export function getEmployeeByEmail(email) {
   return getEmployees().find((e) => e.email.toLowerCase() === email.toLowerCase())
 }
 
-export function addEmployee({ email, name, role = 'employee' }) {
+export function addEmployee({ email, name }) {
   const employees = getEmployees()
-  const employee = {
-    id: email,
-    email,
-    name,
-    role,
-    createdAt: nowIso(),
-    lastAction: null,
-  }
+  const employee = { id: email, email, name, createdAt: nowIso() }
   employees.push(employee)
   saveEmployees(employees)
   return employee
 }
 
 export function updateEmployee(id, updates) {
-  const employees = getEmployees().map((e) => (e.id === id ? { ...e, ...updates } : e))
-  saveEmployees(employees)
-}
-
-// Updates an employee's profile. If the email changes, cascades the new id
-// across timeLogs/metrics/reviews since employeeId references email-as-id.
-export function updateEmployeeProfile(oldId, { name, email }) {
-  const newId = email.toLowerCase()
-  const employees = getEmployees().map((e) =>
-    e.id === oldId ? { ...e, id: newId, email: newId, name } : e
-  )
-  saveEmployees(employees)
-
-  if (newId !== oldId) {
-    saveTimeLogs(getTimeLogs().map((t) => (t.employeeId === oldId ? { ...t, employeeId: newId } : t)))
-    saveMetrics(getMetrics().map((m) => (m.employeeId === oldId ? { ...m, employeeId: newId } : m)))
-    saveReviews(getReviews().map((r) => (r.employeeId === oldId ? { ...r, employeeId: newId } : r)))
-  }
-
-  return employees.find((e) => e.id === newId)
+  saveEmployees(getEmployees().map((e) => (e.id === id ? { ...e, ...updates } : e)))
 }
 
 export function deleteEmployee(id) {
@@ -205,21 +148,19 @@ export function getOpenTimeLog(employeeId) {
   return getTimeLogs().find((t) => t.employeeId === employeeId && t.clockIn && !t.clockOut)
 }
 
-// Usable by an employee for themselves, or by a manager on behalf of any employee.
+// Callable by an employee for themselves, or a manager on behalf of any employee.
 export function clockIn(employeeId) {
   const logs = getTimeLogs()
   if (logs.find((t) => t.employeeId === employeeId && t.clockIn && !t.clockOut)) return
-  const ts = nowIso()
   logs.push({
     id: generateId(),
     employeeId,
     date: todayStr(),
-    clockIn: ts,
+    clockIn: nowIso(),
     clockOut: null,
     totalHours: 0,
   })
   saveTimeLogs(logs)
-  updateEmployee(employeeId, { lastAction: `Clocked in at ${new Date(ts).toLocaleTimeString()}` })
 }
 
 export function clockOut(employeeId) {
@@ -230,17 +171,17 @@ export function clockOut(employeeId) {
   openLog.clockOut = ts
   openLog.totalHours = calculateHours(openLog.clockIn, ts)
   saveTimeLogs(logs)
-  updateEmployee(employeeId, { lastAction: `Clocked out at ${new Date(ts).toLocaleTimeString()}` })
 }
 
 export function updateTimeLog(id, updates) {
-  const logs = getTimeLogs().map((t) => {
-    if (t.id !== id) return t
-    const merged = { ...t, ...updates }
-    merged.totalHours = calculateHours(merged.clockIn, merged.clockOut)
-    return merged
-  })
-  saveTimeLogs(logs)
+  saveTimeLogs(
+    getTimeLogs().map((t) => {
+      if (t.id !== id) return t
+      const merged = { ...t, ...updates }
+      merged.totalHours = calculateHours(merged.clockIn, merged.clockOut)
+      return merged
+    })
+  )
 }
 
 export function deleteTimeLog(id) {
@@ -251,10 +192,7 @@ export function getTodayHours(employeeId) {
   const today = todayStr()
   return getTimeLogs()
     .filter((t) => t.employeeId === employeeId && t.date === today)
-    .reduce((sum, t) => {
-      if (t.clockOut) return sum + t.totalHours
-      return sum + calculateHours(t.clockIn, nowIso())
-    }, 0)
+    .reduce((sum, t) => sum + (t.clockOut ? t.totalHours : calculateHours(t.clockIn, nowIso())), 0)
 }
 
 // ---------- Metrics ----------
@@ -278,13 +216,7 @@ export function getOrCreateTodayMetric(employeeId) {
   const today = todayStr()
   let entry = metrics.find((m) => m.employeeId === employeeId && m.date === today)
   if (!entry) {
-    entry = {
-      id: generateId(),
-      employeeId,
-      date: today,
-      onlineOrders: 0,
-      inStoreCustomers: 0,
-    }
+    entry = { id: generateId(), employeeId, date: today, orders: 0, customers: 0 }
     metrics.push(entry)
     saveMetrics(metrics)
   }
@@ -296,7 +228,7 @@ export function adjustMetric(employeeId, field, delta) {
   const today = todayStr()
   let entry = metrics.find((m) => m.employeeId === employeeId && m.date === today)
   if (!entry) {
-    entry = { id: generateId(), employeeId, date: today, onlineOrders: 0, inStoreCustomers: 0 }
+    entry = { id: generateId(), employeeId, date: today, orders: 0, customers: 0 }
     metrics.push(entry)
   }
   entry[field] = Math.max(0, (entry[field] || 0) + delta)
@@ -305,8 +237,7 @@ export function adjustMetric(employeeId, field, delta) {
 }
 
 export function updateMetric(id, updates) {
-  const metrics = getMetrics().map((m) => (m.id === id ? { ...m, ...updates } : m))
-  saveMetrics(metrics)
+  saveMetrics(getMetrics().map((m) => (m.id === id ? { ...m, ...updates } : m)))
 }
 
 export function deleteMetric(id) {
@@ -331,14 +262,7 @@ export function getReviewsForEmployee(employeeId) {
 
 export function addReview({ employeeId, reviewerEmail, rating, comment }) {
   const reviews = getReviews()
-  reviews.push({
-    id: generateId(),
-    employeeId,
-    reviewerEmail,
-    rating,
-    comment,
-    date: nowIso(),
-  })
+  reviews.push({ id: generateId(), employeeId, reviewerEmail, rating, comment, date: nowIso() })
   saveReviews(reviews)
 }
 
@@ -362,23 +286,22 @@ export function clearCurrentUser() {
 
 // ---------- CSV Export ----------
 
-export function exportToCSV(rows, columns, filename) {
+function toCSV(rows, columns) {
   const header = columns.map((c) => c.label).join(',')
   const body = rows
     .map((row) =>
       columns
         .map((c) => {
-          const val = c.value(row)
-          const str = val === null || val === undefined ? '' : String(val)
-          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-            return `"${str.replace(/"/g, '""')}"`
-          }
-          return str
+          const str = String(c.value(row) ?? '')
+          return /[,"\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str
         })
         .join(',')
     )
     .join('\n')
-  const csv = `${header}\n${body}`
+  return `${header}\n${body}`
+}
+
+function downloadCSV(csv, filename) {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -390,37 +313,31 @@ export function exportToCSV(rows, columns, filename) {
   URL.revokeObjectURL(url)
 }
 
-export function exportAllEmployeesCSV() {
-  const employees = getEmployees().filter((e) => e.role === 'employee')
+export function exportEmployeesToCSV() {
+  const employees = getEmployees()
   const rows = employees.map((emp) => {
     const openLog = getOpenTimeLog(emp.id)
     const logs = getTimeLogsForEmployee(emp.id)
     const metrics = getMetricsForEmployee(emp.id)
-    const totalHours = logs.reduce((sum, l) => sum + l.totalHours, 0)
-    const totalOrders = metrics.reduce((sum, m) => sum + m.onlineOrders, 0)
-    const totalCustomers = metrics.reduce((sum, m) => sum + m.inStoreCustomers, 0)
     return {
       ...emp,
       status: openLog ? 'Clocked In' : 'Clocked Out',
       todayHours: getTodayHours(emp.id),
-      totalHours,
-      totalOrders,
-      totalCustomers,
+      totalHours: logs.reduce((sum, l) => sum + l.totalHours, 0),
+      totalOrders: metrics.reduce((sum, m) => sum + m.orders, 0),
+      totalCustomers: metrics.reduce((sum, m) => sum + m.customers, 0),
     }
   })
 
-  exportToCSV(
-    rows,
-    [
-      { label: 'Name', value: (r) => r.name },
-      { label: 'Email', value: (r) => r.email },
-      { label: 'Status', value: (r) => r.status },
-      { label: 'Today Hours', value: (r) => r.todayHours.toFixed(2) },
-      { label: 'Total Hours', value: (r) => r.totalHours.toFixed(2) },
-      { label: 'Total Online Orders', value: (r) => r.totalOrders },
-      { label: 'Total In-Store Customers', value: (r) => r.totalCustomers },
-      { label: 'Last Action', value: (r) => r.lastAction || '' },
-    ],
-    `employee_report_${todayStr()}.csv`
-  )
+  const csv = toCSV(rows, [
+    { label: 'Name', value: (r) => r.name },
+    { label: 'Email', value: (r) => r.email },
+    { label: 'Status', value: (r) => r.status },
+    { label: 'Today Hours', value: (r) => r.todayHours.toFixed(2) },
+    { label: 'Total Hours', value: (r) => r.totalHours.toFixed(2) },
+    { label: 'Total Orders', value: (r) => r.totalOrders },
+    { label: 'Total Customers', value: (r) => r.totalCustomers },
+  ])
+
+  downloadCSV(csv, `employee_report_${todayStr()}.csv`)
 }

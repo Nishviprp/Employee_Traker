@@ -14,25 +14,21 @@ function pad(n) {
   return String(n).padStart(2, '0')
 }
 
-// DD/MM/YYYY HH:MM
-export function formatDateTime(iso) {
-  if (!iso) return '-'
-  const d = new Date(iso)
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-// DD/MM/YYYY
 export function formatDate(iso) {
   if (!iso) return '-'
   const d = new Date(iso)
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
 }
 
-// HH:MM
 export function formatTime(iso) {
   if (!iso) return '-'
   const d = new Date(iso)
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+export function formatDateTime(iso) {
+  if (!iso) return '-'
+  return `${formatDate(iso)} ${formatTime(iso)}`
 }
 
 export function calculateHours(clockIn, clockOut) {
@@ -42,20 +38,14 @@ export function calculateHours(clockIn, clockOut) {
   return Math.round((ms / 3600000) * 100) / 100
 }
 
-// Converts an ISO datetime string to the value expected by an
-// <input type="datetime-local"> element (local time, no timezone/seconds).
+// <input type="datetime-local"> uses local time with no timezone/seconds.
 export function toDatetimeLocalValue(iso) {
   if (!iso) return ''
   const d = new Date(iso)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-// Converts an <input type="datetime-local"> value back to an ISO string.
 export function fromDatetimeLocalValue(value) {
   if (!value) return null
   return new Date(value).toISOString()
-}
-
-export function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0)
 }
